@@ -12,8 +12,15 @@
 # Author: Andres Gonzelez, dec 2015
 
 import re, glob, sys, csv, collections
+
+import re
+import glob
+import sys
+import csv
+import collections
 import xlwt
 import time
+
 
 def expand(s, list):
     for item in list:
@@ -40,13 +47,14 @@ if len(sys.argv) < 3:
     print("Usage: tech2xl <output file> <input files>...")
     sys.exit(2)
 
-commands = [["show"], \
-            ["version", "cdp", "technical-support", "running-config", "interfaces", "diag", "inventory"], \
-            ["neighbors", "status"], \
+commands = [["show", "sh"],\
+            ["version", "ver", "cdp", "technical-support", "running-config", "interfaces", "diag", "inventory", "inv"], \
+            ["neighbors", "neig","status"], \
             ["detail"]]
 
 
-int_types = ["Ethernet", "FastEthernet", "GigabitEthernet", "Gigabit", "TenGigabit", "Serial", "ATM", "Port-channel", "Tunnel", "Loopback"]
+int_types = ["Ethernet", "FastEthernet", "FDDI", "GigabitEthernet", "Gigabit", "TenGigabit", "Serial", "ATM", "Port-channel",
+             "Tunnel", "Loopback","TwentyFiveGigE", "HundredGigE", "AppGigabitEthernet", "FortyGigabitEthernet" ]
 
 # Inicialized the collections.OrderedDictionary that will store all the info
 systeminfo = collections.OrderedDict()
@@ -54,7 +62,7 @@ intinfo = collections.OrderedDict()
 cdpinfo = collections.OrderedDict()
 diaginfo = collections.OrderedDict()
 
-#These are the fields to be extracted
+# These are the fields to be extracted
 systemfields = ["Name", "Model", "System ID", "Mother ID", "Image"]
 
 intfields = ["Name", \
@@ -87,11 +95,16 @@ intfields = ["Name", \
             "Speed", \
             "Media type"]   
 
-cdpfields = ["Name", "Local interface", "Remote device name", "Remote device domain", "Remote interface", "Remote device IP"]
+cdpfields = ["Name", "Local interface", "Remote device name", "Remote device domain", "Remote interface",
+             "Remote device IP"]
 
 diagfields = ["Name", "Slot", "Subslot", "Description", "Serial number", "Part number"]
 
-masks = ["128.0.0.0","192.0.0.0","224.0.0.0","240.0.0.0","248.0.0.0","252.0.0.0","254.0.0.0","255.0.0.0","255.128.0.0","255.192.0.0","255.224.0.0","255.240.0.0","255.248.0.0","255.252.0.0","255.254.0.0","255.255.0.0","255.255.128.0","255.255.192.0","255.255.224.0","255.255.240.0","255.255.248.0","255.255.252.0","255.255.254.0","255.255.255.0","255.255.255.128","255.255.255.192","255.255.255.224","255.255.255.240","255.255.255.248","255.255.255.252","255.255.255.254","255.255.255.255"]
+masks = ["128.0.0.0","192.0.0.0","224.0.0.0","240.0.0.0","248.0.0.0","252.0.0.0","254.0.0.0","255.0.0.0",
+         "255.128.0.0","255.192.0.0","255.224.0.0","255.240.0.0","255.248.0.0","255.252.0.0","255.254.0.0",
+         "255.255.0.0","255.255.128.0","255.255.192.0","255.255.224.0","255.255.240.0","255.255.248.0",
+         "255.255.252.0","255.255.254.0","255.255.255.0","255.255.255.128","255.255.255.192","255.255.255.224",
+         "255.255.255.240","255.255.255.248","255.255.255.252","255.255.255.254","255.255.255.255"]
 
 
 # takes all arguments starting from 2nd
@@ -122,7 +135,7 @@ for arg in sys.argv[2:]:
                 if name == '':
                     infile.seek(0)
                 else:
-                    #removes all deleted chars with backspace (\b) and bell chars (\a)
+                    # removes all deleted chars with backspace (\b) and bell chars (\a)
                     cli = m.group(2)
 
                     while re.search("\b|\a", cli):
@@ -419,11 +432,11 @@ for arg in sys.argv[2:]:
 
                     m = re.search("(.+) (connected|notconnect|disabled)\s+(\S+)\s+(\S+)\s+(\S+)\s+(.*)", line[8:])
                     if m:
-                        if not intinfo[name][item].get('Description'):
+                        if not intinfo[name][item].get('Description') == '':
                             intinfo[name][item]['Description'] = m.group(1)
-                        if not intinfo[name][item].get('Status'):
+                        if not intinfo[name][item].get('Status') == '':
                             intinfo[name][item]['Status'] = m.group(2)
-                        if not intinfo[name][item].get('Access vlan'):
+                        if not intinfo[name][item].get('Access vlan') == '':
                             if m.group(3) == 'trunk':
                                 intinfo[name][item]['Switchport mode'] = 'trunk'
                             elif m.group(3) == 'routed':
@@ -463,14 +476,17 @@ for arg in sys.argv[2:]:
                         cdpinfo[name + local_int + remote_int] = collections.OrderedDict()
                     
                     if cdp_neighbor not in cdpinfo[name + local_int + remote_int].keys():
-                        cdpinfo[name + local_int + remote_int][cdp_neighbor] = collections.OrderedDict(zip(cdpfields, [''] * len(cdpfields)))
+                        cdpinfo[name + local_int + remote_int][cdp_neighbor] = collections.OrderedDict(
+                            zip(cdpfields, [''] * len(cdpfields)))
                     
                     cdpinfo[name + local_int + remote_int][cdp_neighbor]['Name'] = name
 
-                    #splits name and domain, if any
-                    cdpinfo[name + local_int + remote_int][cdp_neighbor]['Remote device name'] = cdp_neighbor.split('.',1)[0]
+                    # splits name and domain, if any
+                    cdpinfo[name + local_int + remote_int][cdp_neighbor]['Remote device name'] = \
+                    cdp_neighbor.split('.',1)[0]
                     if len(cdp_neighbor.split('.')) > 1:
-                        cdpinfo[name + local_int + remote_int][cdp_neighbor]['Remote device domain'] = cdp_neighbor.split('.',1)[1]
+                        cdpinfo[name + local_int + remote_int][cdp_neighbor]['Remote device domain'] = \
+                        cdp_neighbor.split('.',1)[1]
                     cdpinfo[name + local_int + remote_int][cdp_neighbor]['Local interface'] = local_int
                     cdpinfo[name + local_int + remote_int][cdp_neighbor]['Remote interface'] = remote_int
 
@@ -494,13 +510,16 @@ for arg in sys.argv[2:]:
                         cdpinfo[name + local_int + remote_int] = collections.OrderedDict()
                     
                     if cdp_neighbor not in cdpinfo[name + local_int + remote_int].keys():
-                        cdpinfo[name + local_int + remote_int][cdp_neighbor] = collections.OrderedDict(zip(cdpfields, [''] * len(cdpfields)))
+                        cdpinfo[name + local_int + remote_int][cdp_neighbor] = collections.OrderedDict(
+                            zip(cdpfields, [''] * len(cdpfields)))
                     
                     cdpinfo[name + local_int + remote_int][cdp_neighbor]['Name'] = name
-                    #splits name and domain, if any
-                    cdpinfo[name + local_int + remote_int][cdp_neighbor]['Remote device name'] = cdp_neighbor.split('.',1)[0]
+                    # splits name and domain, if any
+                    cdpinfo[name + local_int + remote_int][cdp_neighbor]['Remote device name'] = \
+                    cdp_neighbor.split('.',1)[0]
                     if len(cdp_neighbor.split('.')) > 1:
-                        cdpinfo[name + local_int + remote_int][cdp_neighbor]['Remote device domain'] = cdp_neighbor.split('.',1)[1]
+                        cdpinfo[name + local_int + remote_int][cdp_neighbor]['Remote device domain'] = \
+                        cdp_neighbor.split('.',1)[1]
                     cdpinfo[name + local_int + remote_int][cdp_neighbor]['Local interface'] = local_int
                     cdpinfo[name + local_int + remote_int][cdp_neighbor]['Remote interface'] = remote_int
 
@@ -511,7 +530,8 @@ for arg in sys.argv[2:]:
             if command == 'show inventory' and name != '':
 
                 # extracts information as per patterns
-                m = re.search('NAME: .* on Slot (\d+) SubSlot (\d+)\", DESCR: \"(.+)\"', line)
+                # m = re.search('NAME: .* on Slot (\d+) SubSlot (\d+)\", DESCR: \"(.+)\"', line)
+                m = re.search('NAME:\"(.+)\", DESCR: \"(.+)\"', line)
                 if m:
                     slot = m.group(1)
                     subslot = m.group(2)
@@ -522,11 +542,10 @@ for arg in sys.argv[2:]:
                     diaginfo[name + item]['Slot'] = slot
                     diaginfo[name + item]['Subslot'] = subslot
                     diaginfo[name + item]['Description'] = m.group(3)
-
                     continue
                     
                 # extracts information as per patterns
-                m = re.search('NAME: .* on Slot (\d+)\", DESCR: \"(.+)\"', line)
+                m = re.search('NAME: \"(.+)\", DESCR: \"(.+)\"', line)
                 if m:
                     slot = m.group(1)
                     subslot = ''
@@ -535,16 +554,16 @@ for arg in sys.argv[2:]:
                         diaginfo[name + item] = collections.OrderedDict(zip(diagfields, [''] * len(diagfields)))
                     diaginfo[name + item]['Name'] = name
                     diaginfo[name + item]['Slot'] = slot
-                    diaginfo[name + item]['Subslot'] = subslot
+                #    diaginfo[name + item]['Subslot'] = subslot
                     diaginfo[name + item]['Description'] = m.group(2)
 
                     continue
                     
-                m = re.search('PID: (.*)\s*, VID: .*, SN: (\S+)', line)
+                m = re.search('PID: (.*) \s*,\s* VID: .*, SN: (\S+)', line)
                 if m and item != '':
                     diaginfo[name + item]['Name'] = name
                     diaginfo[name + item]['Slot'] = slot
-                    diaginfo[name + item]['Subslot'] = subslot
+                #    diaginfo[name + item]['Subslot'] = subslot
                     diaginfo[name + item]['Part number'] = m.group(1)
                     diaginfo[name + item]['Serial number'] = m.group(2)
 
@@ -629,7 +648,7 @@ for arg in sys.argv[2:]:
                     cdp_neighbor = m.group(1)
                     continue
 
-                m = re.search("^  IP address: (.*)", line)
+                m = re.search("^IP address: (.*)", line)
                 if m:
                     cdp_ip = m.group(1)
                     continue
@@ -642,13 +661,16 @@ for arg in sys.argv[2:]:
                         cdpinfo[name + local_int + remote_int] = collections.OrderedDict()
                     
                     if cdp_neighbor not in cdpinfo[name + local_int + remote_int].keys():
-                        cdpinfo[name + local_int + remote_int][cdp_neighbor] = collections.OrderedDict(zip(cdpfields, [''] * len(cdpfields)))
+                        cdpinfo[name + local_int + remote_int][cdp_neighbor] = collections.OrderedDict(
+                            zip(cdpfields, [''] * len(cdpfields)))
                     
                     cdpinfo[name + local_int + remote_int][cdp_neighbor]['Name'] = name
                     cdpinfo[name + local_int + remote_int][cdp_neighbor]['Remote device'] = cdp_neighbor
-                    cdpinfo[name + local_int + remote_int][cdp_neighbor]['Remote device name'] = cdp_neighbor.split('.',1)[0]
+                    cdpinfo[name + local_int + remote_int][cdp_neighbor]['Remote device name'] = \
+                    cdp_neighbor.split('.',1)[0]
                     if len(cdp_neighbor.split('.')) > 1:
-                        cdpinfo[name + local_int + remote_int][cdp_neighbor]['Remote device domain'] = cdp_neighbor.split('.',1)[1]
+                        cdpinfo[name + local_int + remote_int][cdp_neighbor]['Remote device domain'] = \
+                        cdp_neighbor.split('.',1)[1]
 
                     cdpinfo[name + local_int + remote_int][cdp_neighbor]['Local interface'] = local_int
                     cdpinfo[name + local_int + remote_int][cdp_neighbor]['Remote interface'] = remote_int
