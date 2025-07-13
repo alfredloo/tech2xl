@@ -43,7 +43,7 @@ start_time = time.time()
 print("tech2xl v1.5")
 
 if len(sys.argv) < 3:
-    print("Usage: tech2xl <output file> <input files>...")
+    print("Usage: tech2xl <outputfile.XLS> <input files>...")
     sys.exit(2)
 
 commands = [["show", "sh"],
@@ -55,7 +55,7 @@ commands = [["show", "sh"],
 int_types = ["Ethernet", "FastEthernet", "FDDI", "GigabitEthernet", "Gigabit", "TenGigabit", "Serial", "ATM", "Port-channel",
              "Tunnel", "Loopback","TwentyFiveGigE", "HundredGigE", "AppGigabitEthernet", "FortyGigabitEthernet" ]
 
-# Inicialized the collections.OrderedDictionary that will store all the info
+# Initialized the collections.OrderedDictionary that will store all the info
 systeminfo = collections.OrderedDict()
 intinfo = collections.OrderedDict()
 cdpinfo = collections.OrderedDict()
@@ -127,7 +127,7 @@ for arg in sys.argv[2:]:
         for line in infile:
 
             # checks for device name in prompt
-            m = re.search(r"^([a-zA-Z0-9][a-zA-Z0-9_\-\.]*)[#>]\s*([\w\-\_\s\b\a]*)", line)
+            m = re.search(r"^([a-zA-Z0-9][a-zA-Z0-9_\-]*)[#>]\s*([\w\-\s\b\a]*)", line)
             # avoids a false positive in the "show switch detail" or "show flash: all" section of show tech
             if m and not (command == "show switch detail" or command == "show flash: all"):
 
@@ -170,7 +170,7 @@ for arg in sys.argv[2:]:
             if command == 'show running-config':
                 # extracts information as per patterns
 
-                m = re.match(r"hostname ([a-zA-Z0-9][a-zA-Z0-9_\-\.]*)", line)
+                m = re.match(r"hostname ([a-zA-Z0-9][a-zA-Z0-9_\-]*)", line)
                 if m:
                     if name == '':
                         name = m.group(1)
@@ -236,7 +236,7 @@ for arg in sys.argv[2:]:
                         intinfo[name][item]["DLCI"] = int(m.group(1))
                         continue
 
-                    m = re.search(r"^ ip address ([\d|\.]+) ([\d|\.]+)", line)
+                    m = re.search(r"^ ip address ([\d|]+) ([\d|]+)", line)
                     if m:
                         intinfo[name][item]['IP address'] = m.group(1)
                         intinfo[name][item]['Mask'] = m.group(2)
@@ -285,12 +285,12 @@ for arg in sys.argv[2:]:
                     systeminfo[name]['Mother ID'] = m.group(1)
                     continue
 
-                m = re.search(r'System image file is \"flash:\/?(.*)\.bin\"', line)
+                m = re.search(r'System image file is \"flash:?(.*)\.bin\"', line)
                 if m:
                     systeminfo[name]['Image'] = m.group(1)
                     continue
 
-                m = re.search(r'System image file is \"flash:\/.*\/(.*)\.bin\"', line)
+                m = re.search(r'System image file is \"flash:.*(.*)\.bin\"', line)
                 if m:
                     systeminfo[name]['Image'] = m.group(1)
                     continue
@@ -321,7 +321,7 @@ for arg in sys.argv[2:]:
                     intinfo[name][item]['Line protocol'] = m.group(3)
                     continue
 
-                m = re.search(r"Hardware is (.+), address is ([\w|\.]+)", line)
+                m = re.search(r"Hardware is (.+), address is ([\w|]+)", line)
                 if m:
                     intinfo[name][item]['Hardware'] = m.group(1)
                     intinfo[name][item]['Mac address'] = m.group(2)
@@ -342,7 +342,7 @@ for arg in sys.argv[2:]:
                     intinfo[name][item]['Description'] = m.group(1)
                     continue
 
-                m = re.search(r"^  Internet address is ([\d|\.]+)\/(\d+)", line)
+                m = re.search(r"^  Internet address is ([\d|]+)(\d+)", line)
                 if m:
                     intinfo[name][item]['IP address'] = m.group(1)
                     intinfo[name][item]['Mask bits'] = int(m.group(2))
@@ -416,7 +416,7 @@ for arg in sys.argv[2:]:
 
             # processes "show interfaces status" command or section of sh tech
             if command == 'show interfaces status' and name != '':
-                if (line[:4] != "Port"):
+                if line[:4] != "Port":
                     item = expand(line[:2], int_types)
 
                     if item is not None:
@@ -557,12 +557,14 @@ for arg in sys.argv[2:]:
                     diaginfo[name + item]['Description'] = m.group(2)
 
                     continue
-                    
-                m = re.search(r'PID: (.*) \s*,\s* VID: .*, SN: (\S+)', line)
+                # original give trailing blanks for PID
+                #m = re.search(r'PID: (.*) \s*,\s* VID: .*, SN: (\S+)', line)
+                m = re.search(r'PID:\s*(\S+)\s*,\s*VID:\s*\S+\s*,\s*SN:\s*(\S+)', line)
+
                 if m and item != '':
                     diaginfo[name + item]['Name'] = name
                     diaginfo[name + item]['Slot'] = slot
-                #    diaginfo[name + item]['Subslot'] = subslot
+                    diaginfo[name + item]['Subslot'] = subslot
                     diaginfo[name + item]['Part number'] = m.group(1)
                     diaginfo[name + item]['Serial number'] = m.group(2)
 
@@ -642,7 +644,7 @@ for arg in sys.argv[2:]:
             if command == 'show cdp neighbors detail' and name != '':
                 # extracts information as per patterns
 
-                m = re.search(r"^Device ID: ([a-zA-Z0-9][a-zA-Z0-9_\-\.]*)", line)
+                m = re.search(r"^Device ID: ([a-zA-Z0-9][a-zA-Z0-9_\-]*)", line)
                 if m:
                     cdp_neighbor = m.group(1)
                     continue
@@ -652,7 +654,7 @@ for arg in sys.argv[2:]:
                     cdp_ip = m.group(1)
                     continue
 
-                m = re.search(r"Interface: ([\w\/]+),  Port ID \(outgoing port\): (.*)", line)
+                m = re.search(r"Interface: (\w+),  Port ID \(outgoing port\): (.*)", line)
                 if m:
                     local_int = m.group(1)
                     remote_int = m.group(2)
